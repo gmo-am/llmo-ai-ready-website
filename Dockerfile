@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.6
-
 ARG NODE_VERSION=20
 
 FROM node:${NODE_VERSION}-bookworm-slim AS builder
@@ -9,8 +7,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --include=optional
+RUN npm ci --include=optional
 
 # Copy source and build
 COPY . .
