@@ -1,19 +1,19 @@
-ARG NODE_VERSION=20
+ARG NODE_VERSION=22
 
-FROM node:${NODE_VERSION}-bookworm-slim AS builder
-ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+# Dependencies stage - install all deps including devDeps
+FROM node:${NODE_VERSION}-bookworm-slim AS deps
 WORKDIR /app
-
-# Install dependencies
 COPY package*.json ./
-RUN npm ci --include=optional
+RUN npm ci
 
-# Copy source and build
+# Builder stage - build the application
+FROM node:${NODE_VERSION}-bookworm-slim AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-
+# Runner stage - production only
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
