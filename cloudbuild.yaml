@@ -32,6 +32,7 @@ steps:
       - -c
       - |
         set -euo pipefail
+        echo "Deploying to Cloud Run..."
         gcloud run deploy ${_SERVICE} \
           --image "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA" \
           --region ${_REGION} \
@@ -44,6 +45,16 @@ steps:
           --set-env-vars NEXT_TELEMETRY_DISABLED=1 \
           --set-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest,FIRECRAWL_API_KEY=FIRECRAWL_API_KEY:latest \
           --service-account ${_SERVICE_ACCOUNT}
+        
+        echo "Ensuring public access is enabled..."
+        gcloud run services add-iam-policy-binding ${_SERVICE} \
+          --region ${_REGION} \
+          --member="allUsers" \
+          --role="roles/run.invoker"
+        
+        echo "Verifying deployment..."
+        SERVICE_URL=$(gcloud run services describe ${_SERVICE} --region=${_REGION} --format="value(status.url)")
+        echo "Service deployed at: $SERVICE_URL"
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA
