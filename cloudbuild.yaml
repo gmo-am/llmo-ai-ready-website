@@ -5,7 +5,7 @@ substitutions:
   _SERVICE: llmo-ai-ready-website-stg
   _PORT: "8080"
   # Cloud Run 実行サービスアカウント（必須）
-  _SERVICE_ACCOUNT: cr-llmo-stg-sa@${PROJECT_ID}.iam.gserviceaccount.com
+  _SERVICE_ACCOUNT: cr-llmo-stg-sa@gmo-nk-llmo-stg.iam.gserviceaccount.com
 
 options:
   logging: CLOUD_LOGGING_ONLY
