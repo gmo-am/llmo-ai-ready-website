@@ -11,6 +11,10 @@ FROM node:${NODE_VERSION}-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Set dummy environment variables for build
+ENV OPENAI_API_KEY=build-time-dummy \
+    FIRECRAWL_API_KEY=build-time-dummy \
+    NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Runner stage - production only
