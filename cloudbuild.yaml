@@ -1,31 +1,26 @@
+# cloudbuild.yaml（最小・手動実行用）
 substitutions:
   _REGION: asia-northeast1
   _REPO: containers
   _IMAGE: llmo-ai-ready-website
   _SERVICE: llmo-ai-ready-website-stg
   _PORT: "8080"
-  # Cloud Run 実行サービスアカウント（必須）
-  _SERVICE_ACCOUNT: cr-llmo-stg-sa@gmo-nk-llmo-stg.iam.gserviceaccount.com
+  # Cloud Run 実行サービスアカウント（テスト簡略化のため build実行SAを兼用）
+  _SERVICE_ACCOUNT: cloudbuild-runner@gmo-am-common.iam.gserviceaccount.com
 
 options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # Build image
+  # 1) Build (latest固定)
   - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA
-      - .
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest", "."]
 
-  # Push image
+  # 2) Push
   - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest"]
 
-  # Deploy to Cloud Run
+  # 3) Deploy to Cloud Run（未認証を許可）
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
     args:
@@ -34,7 +29,7 @@ steps:
         set -euo pipefail
         echo "Deploying to Cloud Run..."
         gcloud run deploy ${_SERVICE} \
-          --image "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA" \
+          --image "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest" \
           --region ${_REGION} \
           --platform managed \
           --allow-unauthenticated \
@@ -42,19 +37,12 @@ steps:
           --cpu 1 \
           --memory 1Gi \
           --max-instances 3 \
-          --set-env-vars NEXT_TELEMETRY_DISABLED=1 \
           --set-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest,FIRECRAWL_API_KEY=FIRECRAWL_API_KEY:latest \
           --service-account ${_SERVICE_ACCOUNT}
-        
-        echo "Ensuring public access is enabled..."
-        gcloud run services add-iam-policy-binding ${_SERVICE} \
-          --region ${_REGION} \
-          --member="allUsers" \
-          --role="roles/run.invoker"
-        
+
         echo "Verifying deployment..."
         SERVICE_URL=$(gcloud run services describe ${_SERVICE} --region=${_REGION} --format="value(status.url)")
-        echo "Service deployed at: $SERVICE_URL"
+        echo "Service deployed at: $$SERVICE_URL"
 
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest
